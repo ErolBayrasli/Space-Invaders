@@ -1,0 +1,73 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neon Galaxy Guardian</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <div class="overlay visible" id="startScreen">
+      <div class="menu-card">
+        <div class="title-logo">Bogath Invader</div>
+        <div class="hero-note">Help save Luke Petito.</div>
+        <p class="subtitle">Command your starfighter and defend Luke Petito from the Bogath Files.</p>
+        <div class="menu-buttons">
+          <button id="startButton">Start Game</button>
+          <button id="instructionsButton">Instructions</button>
+          <button id="leaderboardButton">Leaderboard</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="instructionsScreen">
+      <div class="menu-card">
+        <div class="section-title">Instructions</div>
+        <ul class="instruction-list">
+          <li>Use Arrow keys or A/D to pilot your starfighter.</li>
+          <li>Press Space to unleash ion cannon blasts.</li>
+          <li>Destroy enemy squadrons and survive each wave.</li>
+          <li>Complete 3 levels with increasingly aggressive cruisers.</li>
+          <li>Save your call sign to the leaderboard after battle.</li>
+        </ul>
+        <button class="backButton">Back</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="leaderboardScreen">
+      <div class="menu-card leaderboard-card">
+        <div class="section-title">Leaderboard</div>
+        <div class="leaderboard-list" id="leaderboardList"></div>
+        <button class="backButton">Back</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="gameOverScreen">
+      <div class="menu-card">
+        <div class="section-title" id="finalTitle">Game Over</div>
+        <p id="finalMessage" class="subtitle"></p>
+        <div class="score-entry">
+          <label for="playerName">Enter your name:</label>
+          <input id="playerName" maxlength="16" placeholder="GALAXY HERO" />
+          <button id="submitScoreButton">Save Score</button>
+        </div>
+        <button id="restartButton">Play Again</button>
+        <button class="backButton">Back to Menu</button>
+      </div>
+    </div>
+
+    <div id="gameUI">
+      <div class="top-bar">
+        <div class="status-item">Score: <span id="scoreValue">0</span></div>
+        <div class="status-item">Lives: <span id="livesValue">3</span></div>
+        <div class="status-item">Level: <span id="levelValue">1</span></div>
+      </div>
+      <canvas id="gameCanvas" width="640" height="560"></canvas>
+      <div class="hud-note">Press Space to shoot. Defeat enemies before they invade.</div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
