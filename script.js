@@ -7,6 +7,7 @@ bgImage.src = 'Bogath.jpg';
 const shipImage = new Image();
 shipImage.src = 'luke.jpeg';
 
+const introScreen = document.getElementById('introScreen');
 const startScreen = document.getElementById('startScreen');
 const instructionsScreen = document.getElementById('instructionsScreen');
 const leaderboardScreen = document.getElementById('leaderboardScreen');
@@ -23,6 +24,7 @@ const instructionsButton = document.getElementById('instructionsButton');
 const leaderboardButton = document.getElementById('leaderboardButton');
 const submitScoreButton = document.getElementById('submitScoreButton');
 const restartButton = document.getElementById('restartButton');
+const gameUI = document.getElementById('gameUI');
 
 const state = {
   current: 'menu',
@@ -34,6 +36,8 @@ const state = {
   bullets: [],
   enemyBullets: [],
   blockers: [],
+  particles: [],
+  shakeIntensity: 0,
   player: { x: canvas.width / 2, y: canvas.height - 62, width: 56, height: 16, speed: 340 },
   keys: {},
   enemyDirection: 1,
@@ -43,7 +47,7 @@ const state = {
 
 const levelConfigs = [
   { rows: 3, cols: 7, speed: 1.6, fireRate: 0.012, boss: false, blockers: 2 },
-  { rows: 4, cols: 8, speed: 2.0, fireRate: 0.018, boss: false, blockers: 3 },
+  { rows: 4, cols: 8, speed: 1.8, fireRate: 0.014, boss: false, blockers: 2 },
   { rows: 4, cols: 9, speed: 2.4, fireRate: 0.024, boss: true, blockers: 4 },
 ];
 
@@ -170,21 +174,35 @@ function updateUI() {
   levelValue.textContent = state.level;
 }
 
+function setGameMode(active) {
+  if (!gameUI) return;
+  gameUI.classList.toggle('hidden', !active);
+}
+
 function showOverlay(name) {
   [startScreen, instructionsScreen, leaderboardScreen, gameOverScreen].forEach(screen => screen.classList.remove('visible'));
   if (name === 'menu') startScreen.classList.add('visible');
   if (name === 'instructions') instructionsScreen.classList.add('visible');
   if (name === 'leaderboard') leaderboardScreen.classList.add('visible');
   if (name === 'gameover') gameOverScreen.classList.add('visible');
+  if (state.current !== 'playing') setGameMode(false);
 }
 
 function restoreGameView() {
   [startScreen, instructionsScreen, leaderboardScreen, gameOverScreen].forEach(screen => screen.classList.remove('visible'));
 }
 
+function playIntro() {
+  introScreen.style.display = 'none';
+  showOverlay('menu');
+}
+
 function startGame() {
   initAudio();
+  introScreen.style.display = 'none';
+  introScreen.classList.remove('visible', 'fade-out');
   restoreGameView();
+  setGameMode(true);
   state.current = 'playing';
   resetGame();
   lastFrame = performance.now();
@@ -247,6 +265,46 @@ function loadLeaderboard() {
   } catch (error) {
     return [];
   }
+}
+
+function createExplosion(x, y, color, count = 12, speed = 200) {
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count;
+    const velocity = speed + Math.random() * 100;
+    state.particles.push({
+      x,
+      y,
+      vx: Math.cos(angle) * velocity,
+      vy: Math.sin(angle) * velocity,
+      color,
+      life: 0.6,
+      maxLife: 0.6,
+      size: 3 + Math.random() * 3,
+    });
+  }
+  state.shakeIntensity = Math.min(8, state.shakeIntensity + 2);
+}
+
+function updateParticles(dt) {
+  state.particles = state.particles.filter(p => {
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 300 * dt; // gravity
+    p.life -= dt;
+    return p.life > 0;
+  });
+
+  state.shakeIntensity = Math.max(0, state.shakeIntensity - dt * 12);
+}
+
+function drawParticles() {
+  state.particles.forEach(p => {
+    const alpha = p.life / p.maxLife;
+    ctx.fillStyle = p.color.replace(')', `, ${alpha})`).replace('rgb', 'rgba');
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+    ctx.fill();
+  });
 }
 
 function handleInput(dt) {
@@ -315,6 +373,7 @@ function handleCollisions() {
       if (bullet.x < blocker.x + blocker.width && bullet.x + bullet.width > blocker.x && bullet.y < blocker.y + blocker.height && bullet.y + bullet.height > blocker.y) {
         blocker.health -= 1;
         bullet.y = -100;
+        createExplosion(bullet.x, bullet.y, 'rgb(255, 150, 80)', 8, 120);
       }
     });
     state.enemies.forEach((enemy) => {
@@ -322,7 +381,11 @@ function handleCollisions() {
       if (bullet.x < enemy.x + enemy.width && bullet.x + bullet.width > enemy.x && bullet.y < enemy.y + enemy.height && bullet.y + bullet.height > enemy.y) {
         enemy.health -= 1;
         bullet.y = -100;
+        createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 'rgb(100, 200, 255)', 10, 150);
         playSound(sounds.explode);
+        if (enemy.health <= 0) {
+          createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 'rgb(255, 200, 100)', 20, 200);
+        }
       }
     });
   });
@@ -341,11 +404,13 @@ function handleCollisions() {
     state.blockers.forEach((blocker) => {
       if (bullet.x < blocker.x + blocker.width && bullet.x + bullet.width > blocker.x && bullet.y < blocker.y + blocker.height && bullet.y + bullet.height > blocker.y) {
         bullet.y = canvas.height + 20;
+        createExplosion(bullet.x, bullet.y, 'rgb(255, 100, 100)', 8, 100);
       }
     });
     if (bullet.x < state.player.x + state.player.width && bullet.x + bullet.width > state.player.x && bullet.y < state.player.y + state.player.height && bullet.y + bullet.height > state.player.y) {
       bullet.y = canvas.height + 20;
       state.lives -= 1;
+      createExplosion(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, 'rgb(255, 80, 80)', 16, 180);
       playSound(sounds.hit);
     }
   });
@@ -476,53 +541,88 @@ function drawEnemies() {
   state.enemies.forEach((enemy) => {
     ctx.save();
     const enemyCenterX = enemy.x + enemy.width / 2;
-    const enemyCenterY = enemy.y + enemy.height * 0.45;
-    const dx = playerCenterX - enemyCenterX;
-    const dy = playerCenterY - enemyCenterY;
-    const distance = Math.max(Math.hypot(dx, dy), 1);
-    const pupilOffsetX = (dx / distance) * 2.5;
-    const pupilOffsetY = (dy / distance) * 1.5;
+    const enemyCenterY = enemy.y + enemy.height / 2;
 
     if (enemy.boss) {
-      ctx.shadowColor = 'rgba(255, 144, 58, 0.75)';
-      ctx.shadowBlur = 18;
-      ctx.fillStyle = '#ffbc7d';
+      // Boss: Large angular pyramid spaceship
+      ctx.shadowColor = 'rgba(255, 100, 50, 0.9)';
+      ctx.shadowBlur = 20;
+      
+      // Main body - angular
+      ctx.fillStyle = '#ff6b35';
       ctx.beginPath();
-      ctx.ellipse(enemyCenterX, enemy.y + enemy.height / 2, enemy.width / 2, enemy.height / 2.2, 0, 0, Math.PI * 2);
+      ctx.moveTo(enemy.x + enemy.width / 2, enemy.y); // top point
+      ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height * 0.6); // right
+      ctx.lineTo(enemy.x + enemy.width * 0.75, enemy.y + enemy.height); // bottom right
+      ctx.lineTo(enemy.x + enemy.width * 0.25, enemy.y + enemy.height); // bottom left
+      ctx.lineTo(enemy.x, enemy.y + enemy.height * 0.6); // left
+      ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = '#ff8c41';
-      ctx.fillRect(enemy.x + 14, enemy.y + enemy.height * 0.35, enemy.width - 28, enemy.height * 0.22);
-      ctx.strokeStyle = 'rgba(255, 199, 132, 0.9)';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-      ctx.fillStyle = '#111';
+      
+      // Bright accent stripe
+      ctx.fillStyle = '#ffaa55';
+      ctx.fillRect(enemy.x + enemy.width * 0.15, enemy.y + enemy.height * 0.35, enemy.width * 0.7, enemy.height * 0.15);
+      
+      // Energy core glow
+      ctx.fillStyle = '#ffd700';
       ctx.beginPath();
-      ctx.arc(enemyCenterX + pupilOffsetX * 1.4, enemy.y + enemy.height * 0.4 + pupilOffsetY * 0.7, 6, 0, Math.PI * 2);
+      ctx.arc(enemyCenterX, enemy.y + enemy.height * 0.5, 8, 0, Math.PI * 2);
       ctx.fill();
-    } else {
-      ctx.shadowColor = 'rgba(142, 248, 255, 0.8)';
-      ctx.shadowBlur = 12;
-      ctx.fillStyle = '#8ae6ff';
-      ctx.beginPath();
-      ctx.ellipse(enemyCenterX, enemy.y + enemy.height * 0.6, enemy.width * 0.6, enemy.height * 0.55, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#1d4c77';
-      ctx.fillRect(enemy.x + enemy.width * 0.15, enemy.y + enemy.height * 0.15, enemy.width * 0.7, enemy.height * 0.4);
-      ctx.fillStyle = '#b6f7ff';
-      const leftEyeX = enemy.x + enemy.width * 0.28;
-      const rightEyeX = enemy.x + enemy.width * 0.72;
-      const eyeY = enemy.y + enemy.height * 0.42;
-      ctx.beginPath();
-      ctx.arc(leftEyeX, eyeY, 4, 0, Math.PI * 2);
-      ctx.arc(rightEyeX, eyeY, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#111';
-      ctx.beginPath();
-      ctx.arc(leftEyeX + pupilOffsetX, eyeY + pupilOffsetY, 2.2, 0, Math.PI * 2);
-      ctx.arc(rightEyeX + pupilOffsetX, eyeY + pupilOffsetY, 2.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+      
+      // Outline glow
+      ctx.strokeStyle = 'rgba(255, 180, 50, 0.6)';
       ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(enemy.x + enemy.width / 2, enemy.y);
+      ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height * 0.6);
+      ctx.lineTo(enemy.x + enemy.width * 0.75, enemy.y + enemy.height);
+      ctx.lineTo(enemy.x + enemy.width * 0.25, enemy.y + enemy.height);
+      ctx.lineTo(enemy.x, enemy.y + enemy.height * 0.6);
+      ctx.closePath();
+      ctx.stroke();
+    } else {
+      // Regular enemies: Angular fighter ships
+      const hue = (enemy.row * 60) % 360;
+      const shipColor = `hsl(${hue}, 80%, 55%)`;
+      const accentColor = `hsl(${hue}, 100%, 70%)`;
+      
+      ctx.shadowColor = `rgba(100, 200, 255, 0.7)`;
+      ctx.shadowBlur = 10;
+      
+      // Main hull - pointed front
+      ctx.fillStyle = shipColor;
+      ctx.beginPath();
+      ctx.moveTo(enemy.x + enemy.width / 2, enemy.y); // front point
+      ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height * 0.5);
+      ctx.lineTo(enemy.x + enemy.width * 0.85, enemy.y + enemy.height);
+      ctx.lineTo(enemy.x + enemy.width * 0.15, enemy.y + enemy.height);
+      ctx.lineTo(enemy.x, enemy.y + enemy.height * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Accent wing stripe
+      ctx.fillStyle = accentColor;
+      ctx.fillRect(enemy.x + enemy.width * 0.1, enemy.y + enemy.height * 0.4, enemy.width * 0.8, enemy.height * 0.2);
+      
+      // Side vents
+      ctx.fillStyle = `hsl(${hue}, 60%, 35%)`;
+      ctx.fillRect(enemy.x + 2, enemy.y + enemy.height * 0.35, 3, enemy.height * 0.3);
+      ctx.fillRect(enemy.x + enemy.width - 5, enemy.y + enemy.height * 0.35, 3, enemy.height * 0.3);
+      
+      // Front weapon indicator
+      ctx.fillStyle = '#ff4444';
+      ctx.fillRect(enemy.x + enemy.width * 0.45, enemy.y + 1, enemy.width * 0.1, 2);
+      
+      // Outline
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(enemy.x + enemy.width / 2, enemy.y);
+      ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height * 0.5);
+      ctx.lineTo(enemy.x + enemy.width * 0.85, enemy.y + enemy.height);
+      ctx.lineTo(enemy.x + enemy.width * 0.15, enemy.y + enemy.height);
+      ctx.lineTo(enemy.x, enemy.y + enemy.height * 0.5);
+      ctx.closePath();
       ctx.stroke();
     }
     ctx.restore();
@@ -606,5 +706,5 @@ restartButton.addEventListener('click', () => {
   startGame();
 });
 
-showOverlay('menu');
 updateLeaderboardDisplay();
+playIntro();
