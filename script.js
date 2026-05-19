@@ -1,11 +1,29 @@
 ﻿const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-const bgImage = new Image();
-bgImage.src = 'Bogath.jpg';
+const stars = [];
+const STAR_LAYERS = [
+  { count: 70, speed: 10, size: 1.0, alpha: 0.6 },
+  { count: 45, speed: 16, size: 1.6, alpha: 0.8 },
+  { count: 24, speed: 26, size: 2.2, alpha: 1.0 },
+];
 
-const shipImage = new Image();
-shipImage.src = 'luke.jpeg';
+function initStarField() {
+  stars.length = 0;
+  STAR_LAYERS.forEach((layer) => {
+    for (let i = 0; i < layer.count; i += 1) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: layer.size * (0.8 + Math.random() * 0.8),
+        speed: layer.speed * (0.75 + Math.random() * 0.5),
+        alpha: layer.alpha * (0.6 + Math.random() * 0.4),
+      });
+    }
+  });
+}
+
+initStarField();
 
 const introScreen = document.getElementById('introScreen');
 const startScreen = document.getElementById('startScreen');
@@ -311,7 +329,7 @@ function handleInput(dt) {
   const speed = state.player.speed * dt;
   if (state.keys.ArrowLeft || state.keys.a || state.keys.A) state.player.x -= speed;
   if (state.keys.ArrowRight || state.keys.d || state.keys.D) state.player.x += speed;
-  state.player.x = Math.max(16, Math.min(canvas.width - state.player.width - 16, state.player.x));
+  state.player.x = Math.max(24, Math.min(canvas.width - state.player.width - 24, state.player.x));
 
   if ((state.keys.Space || state.keys[' ']) && performance.now() - state.lastShot > 260) {
     fireBullet();
@@ -446,18 +464,34 @@ function checkLevelProgress() {
 }
 
 function drawBackground() {
-  if (bgImage.complete && bgImage.naturalHeight !== 0) {
-    ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
-  } else {
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, '#020a1b');
-    gradient.addColorStop(1, '#040918');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
-  
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const w = canvas.width;
+  const h = canvas.height;
+
+  ctx.fillStyle = '#020611';
+  ctx.fillRect(0, 0, w, h);
+
+  const nebula = ctx.createRadialGradient(w * 0.7, h * 0.18, 10, w * 0.62, h * 0.34, h * 0.8);
+  nebula.addColorStop(0, 'rgba(92, 174, 255, 0.24)');
+  nebula.addColorStop(0.35, 'rgba(28, 44, 98, 0.14)');
+  nebula.addColorStop(1, 'rgba(2, 6, 14, 0.98)');
+  ctx.fillStyle = nebula;
+  ctx.fillRect(0, 0, w, h);
+
+  const nebula2 = ctx.createRadialGradient(w * 0.25, h * 0.25, 8, w * 0.32, h * 0.38, h * 0.7);
+  nebula2.addColorStop(0, 'rgba(180, 220, 255, 0.18)');
+  nebula2.addColorStop(0.4, 'rgba(4, 8, 22, 0.02)');
+  nebula2.addColorStop(1, 'rgba(4, 8, 22, 0.95)');
+  ctx.fillStyle = nebula2;
+  ctx.fillRect(0, 0, w, h);
+
+  stars.forEach((star) => {
+    star.y += star.speed * 0.018;
+    if (star.y > h + star.size) star.y = -star.size;
+    ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
 }
 
 function drawPlayer() {
@@ -467,70 +501,63 @@ function drawPlayer() {
   const h = state.player.height;
   const centerX = x + w / 2;
 
-  if (shipImage.complete && shipImage.naturalWidth > 0) {
-    const imgWidth = Math.max(w * 1.8, 100);
-    const imgHeight = Math.max(h * 4.8, 86);
-    const drawX = x - (imgWidth - w) / 2;
-    const drawY = y - (imgHeight - h) / 2;
-
-    ctx.save();
-    ctx.shadowColor = 'rgba(100, 230, 255, 0.85)';
-    ctx.shadowBlur = 14;
-    ctx.drawImage(shipImage, drawX, drawY, imgWidth, imgHeight);
-    ctx.restore();
-    return;
-  }
-
   ctx.save();
-  ctx.shadowColor = 'rgba(100, 230, 255, 0.9)';
-  ctx.shadowBlur = 18;
-  ctx.fillStyle = '#68dbff';
+  ctx.shadowColor = 'rgba(118, 205, 255, 0.85)';
+  ctx.shadowBlur = 20;
+
+  ctx.fillStyle = '#bce8ff';
   ctx.beginPath();
-  ctx.moveTo(centerX, y);
-  ctx.lineTo(x + w + 8, y + h * 0.35);
-  ctx.lineTo(x + w * 0.78, y + h * 0.55);
-  ctx.lineTo(x + w * 0.95, y + h * 0.8);
-  ctx.lineTo(x + w * 0.74, y + h + 18);
-  ctx.lineTo(x + w * 0.26, y + h + 18);
-  ctx.lineTo(x + w * 0.05, y + h * 0.8);
-  ctx.lineTo(x + w * 0.22, y + h * 0.55);
+  ctx.moveTo(centerX, y - 10);
+  ctx.lineTo(x + w * 1.02, y + h * 0.8);
+  ctx.lineTo(x + w * 0.9, y + h * 1.5);
+  ctx.lineTo(x + w * 0.1, y + h * 1.5);
+  ctx.lineTo(x - w * 0.02, y + h * 0.8);
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = '#0f2f5d';
+  ctx.fillStyle = '#7cb8ff';
   ctx.beginPath();
-  ctx.moveTo(centerX - 10, y + h * 0.18);
-  ctx.lineTo(centerX + 10, y + h * 0.18);
-  ctx.lineTo(centerX + 6, y + h * 0.58);
-  ctx.lineTo(centerX - 6, y + h * 0.58);
+  ctx.moveTo(x + w * 0.08, y + h * 0.55);
+  ctx.lineTo(x - w * 0.35, y + h * 0.95);
+  ctx.lineTo(x + w * 0.08, y + h * 1.15);
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = '#c2f8ff';
   ctx.beginPath();
-  ctx.moveTo(centerX - 6, y + h * 0.34);
-  ctx.lineTo(centerX + 6, y + h * 0.34);
-  ctx.lineTo(centerX + 2, y + h * 0.52);
-  ctx.lineTo(centerX - 2, y + h * 0.52);
+  ctx.moveTo(x + w * 0.92, y + h * 0.55);
+  ctx.lineTo(x + w * 1.35, y + h * 0.95);
+  ctx.lineTo(x + w * 0.92, y + h * 1.15);
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = '#58d2ff';
+  ctx.fillStyle = '#5e9dff';
   ctx.beginPath();
-  ctx.moveTo(x + w * 0.28, y + h * 0.75);
-  ctx.lineTo(centerX, y + h + 26);
-  ctx.lineTo(x + w * 0.72, y + h * 0.75);
-  ctx.closePath();
+  ctx.ellipse(centerX, y + h * 0.2, w * 0.18, h * 0.4, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.fillStyle = 'rgba(102, 215, 255, 0.35)';
+  ctx.beginPath();
+  ctx.ellipse(centerX, y + h * 1.55, w * 0.24, h * 0.24, 0, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.restore();
 
   ctx.save();
-  ctx.strokeStyle = 'rgba(190, 246, 255, 0.45)';
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.lineWidth = 1.4;
   ctx.beginPath();
-  ctx.moveTo(centerX, y + 6);
-  ctx.lineTo(centerX, y + h * 0.55);
+  ctx.moveTo(centerX, y - 10);
+  ctx.lineTo(x + w * 0.92, y + h * 0.8);
+  ctx.moveTo(centerX, y - 10);
+  ctx.lineTo(x + w * 0.08, y + h * 0.8);
   ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.beginPath();
+  ctx.ellipse(centerX, y + h * 0.13, w * 0.08, h * 0.16, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
