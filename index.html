@@ -10,18 +10,26 @@
   <div id="app">
     <div class="overlay intro-overlay" id="introScreen">
       <div class="intro-content">
-        <div class="intro-logo">Bogath Invader</div>
-        <div class="intro-subtitle">Incoming Bogath fleet detected.</div>
-        <div class="intro-cta">Engage mission control and prepare for launch.</div>
+        <div class="intro-logo">Neon Galaxy Guardian</div>
+        <div class="intro-subtitle">A rogue pixel legion breaches the outer rim.</div>
+        <div class="intro-cta">Watch the incoming fleet animation. Press any key or click to continue.</div>
+        <div class="intro-continue">Press any key to continue</div>
+        <div class="intro-grid" aria-hidden="true">
+          <div class="intro-alien intro-alien--green"></div>
+          <div class="intro-alien intro-alien--blue"></div>
+          <div class="intro-alien intro-alien--pink"></div>
+          <div class="intro-alien intro-alien--yellow"></div>
+          <div class="intro-alien intro-alien--cyan"></div>
+        </div>
       </div>
       <div class="intro-scan"></div>
     </div>
 
     <div class="overlay" id="startScreen">
       <div class="menu-card">
-        <div class="title-logo">Space Invader</div>
-        <div class="hero-note">Help Save The Galaxy from the Empire</div>
-        <p class="subtitle">Command your starfighter and defend the JEDI</p>
+        <div class="title-logo">Neon Galaxy Guardian</div>
+        <div class="hero-note">Defend the neon lanes against the alien fleet.</div>
+        <p class="subtitle">Pilot the starfighter, manage energy cells, and survive three escalating waves.</p>
         <div class="menu-buttons">
           <button id="startButton">Start Game</button>
           <button id="instructionsButton">Instructions</button>
@@ -70,10 +78,18 @@
       <div class="top-bar">
         <div class="status-item">Score: <span id="scoreValue">0</span></div>
         <div class="status-item">Lives: <span id="livesValue">3</span></div>
+        <div class="status-item">Ammo: <span id="ammoValue">12</span></div>
+        <div class="status-item">Power: <span id="powerupValue">None</span></div>
         <div class="status-item">Level: <span id="levelValue">1</span></div>
       </div>
+      <div id="levelAnnouncement" class="level-announcement hidden"></div>
       <canvas id="gameCanvas" width="640" height="560"></canvas>
-      <div class="hud-note">Press Space to shoot. Defeat enemies before they invade.</div>
+      <div class="hud-note">Press Space to shoot. Destroy all invaders before they reach your hull.</div>
+      <div id="mobileControls" class="mobile-controls hidden">
+        <button id="moveLeftButton" class="mobile-btn">◀</button>
+        <button id="shootButton" class="mobile-btn">●</button>
+        <button id="moveRightButton" class="mobile-btn">▶</button>
+      </div>
     </div>
   </div>
 
