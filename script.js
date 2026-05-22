@@ -183,16 +183,23 @@ function initAudio() {
   try {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const masterGain = audioContext.createGain();
-    masterGain.gain.value = 0.08;
-    masterGain.connect(audioContext.destination);
+    masterGain.gain.value = 0.05;
+    const lowpass = audioContext.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 1400;
+    lowpass.Q.value = 0.8;
+
+    masterGain.connect(lowpass);
+    lowpass.connect(audioContext.destination);
     audioContext._masterGain = masterGain;
+    audioContext._filterNode = lowpass;
     playMusicLoop();
   } catch (error) {
     console.warn('Audio not available:', error);
   }
 }
 
-function playSynthNote(time, freq, duration, type = 'sawtooth', volume = 0.07) {
+function playSynthNote(time, freq, duration, type = 'sawtooth', volume = 0.05) {
   const osc = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
   osc.type = type;
@@ -200,7 +207,7 @@ function playSynthNote(time, freq, duration, type = 'sawtooth', volume = 0.07) {
   gainNode.gain.setValueAtTime(volume, time);
   gainNode.gain.exponentialRampToValueAtTime(0.001, time + duration);
   osc.connect(gainNode);
-  gainNode.connect(audioContext._masterGain || audioContext.destination);
+  gainNode.connect(audioContext._filterNode || audioContext._masterGain || audioContext.destination);
   osc.start(time);
   osc.stop(time + duration);
 }
@@ -210,24 +217,24 @@ function playMusicLoop() {
 
   const bass = [110, 130.81, 146.83, 164.81];
   bass.forEach((freq, index) => {
-    playSynthNote(now + index * 0.46, freq, 0.42, 'triangle', 0.08);
+    playSynthNote(now + index * 0.72, freq, 0.9, 'triangle', 0.04);
   });
 
-  const lead = [440, 523.25, 392, 494, 440, 392, 330, 392];
+  const pad = [220, 196, 247, 262];
+  pad.forEach((freq, index) => {
+    playSynthNote(now + index * 0.72 + 0.18, freq, 1.2, 'sine', 0.03);
+  });
+
+  const lead = [392, 440, 494, 523.25];
   lead.forEach((freq, index) => {
-    playSynthNote(now + index * 0.22, freq, 0.18, 'square', 0.05);
-  });
-
-  const pulse = [220, 247, 262, 294];
-  pulse.forEach((freq, index) => {
-    playSynthNote(now + index * 0.46, freq, 0.24, 'sawtooth', 0.04);
+    playSynthNote(now + index * 0.46, freq, 0.32, 'triangle', 0.03);
   });
 
   setTimeout(() => {
     if (audioContext && audioContext.state === 'running') {
       playMusicLoop();
     }
-  }, 1800);
+  }, 2400);
 }
 
 function playSound({ frequency, duration }) {
